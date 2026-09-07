@@ -181,9 +181,20 @@ public class ActualLoadingScreen {
         dialog.setResizable(false);
 
         try {
-            dialog.setIconImage(ImageIO.read(findImageUrl("icon", "icon.png", ImageIO.getReaderFileSuffixes())));
+            // Determine the loader-specific icon filename based on the runtime environment
+            final String loaderIconName = runningOnQuilt ? "icon-quilt.png" : "icon-fabric.png";
+            URL iconUrl = null;
+            try {
+                iconUrl = findImageUrl("icon", loaderIconName, ImageIO.getReaderFileSuffixes());
+            } catch (Exception ignored) {
+                // Fall back to default icon.png if loader-specific icon cannot be found
+            }
+            if (iconUrl == null) {
+                iconUrl = findImageUrl("icon", "icon.png", ImageIO.getReaderFileSuffixes());
+            }
+            dialog.setIconImage(ImageIO.read(iconUrl));
         } catch (Exception e) {
-            println("Failed to load icon.png", e);
+            println("Failed to load window icon", e);
         }
 
         ImageIcon background;
