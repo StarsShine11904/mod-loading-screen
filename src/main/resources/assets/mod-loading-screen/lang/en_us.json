@@ -1,0 +1,32 @@
+{
+  "modmenu.nameTranslation.mod-loading-screen": "Mod Loading Screen",
+  "modmenu.descriptionTranslation.mod-loading-screen": "An advanced loading screen with the loading progress of mods",
+
+  "modloadingscreen.title.loading_quilt": "Loading Quilt Loader",
+  "modloadingscreen.title.loading_fabric": "Loading Fabric Loader",
+  "modloadingscreen.title.loading_mod": "Loading %s %s",
+
+  "modloadingscreen.memory.usage": "%d MB / %d MB",
+
+  "modloadingscreen.entrypoint.status": "Loading '%s' (%s) \u2014 %d/%d",
+  "modloadingscreen.entrypoint.status_mod": "Loading '%s' (%s) \u2014 %d/%d \u2014 %s",
+
+  "modloadingscreen.error.ipc_client": "An error occurred in Mod Loading Screen's IPC client\n%s",
+  "modloadingscreen.error.ipc_client_title": "Mod Loading Screen IPC Client",
+  "modloadingscreen.error.fake_entrypoint_unsupported": "Fake entrypoint only supported on PreLaunchEntrypoint",
+
+  "modloadingscreen.log.early_loading": "[ModLoadingScreen] I just want to say... I'm loading *really* **extremely** early.",
+  "modloadingscreen.log.flatlaf_not_found": "[ModLoadingScreen] [ERROR] flatlaf.jar not found! Aborting.",
+  "modloadingscreen.log.extracted_flatlaf": "[ModLoadingScreen] Extracted flatlaf.jar",
+  "modloadingscreen.log.dump_active": "[ModLoadingScreen] Transformed class dumping is active",
+  "modloadingscreen.log.dump_clear_failed": "[ModLoadingScreen] [ERROR] Failed to clear debug dump dir",
+  "modloadingscreen.log.transforming": "[ModLoadingScreen] Transforming %s",
+  "modloadingscreen.log.transformer_failed": "[ModLoadingScreen] [ERROR] Transformer %s for %s failed",
+  "modloadingscreen.log.dump_failed": "[ModLoadingScreen] [ERROR] Failed to dump class %s",
+  "modloadingscreen.log.transform_failed": "[ModLoadingScreen] [ERROR] Completely failed to transform %s",
+  "modloadingscreen.log.old_fabric_fallback": "[ModLoadingScreen] New-style FabricLoaderImpl.invokeEntrypoints not found. Assuming old Fabric.",
+  "modloadingscreen.log.mod_loading_early": "[ModLoadingScreen] I just want to say... I'm loading *really* early.",
+  "modloadingscreen.log.dual_install_warn1": "[ModLoadingScreen] [WARN] Mod Loading Screen installed as both a mod and an agent.",
+  "modloadingscreen.log.dual_install_warn2": "[ModLoadingScreen] [WARN] Please avoid doing this. To avoid issues, the mod has disabled itself.",
+  "modloadingscreen.log.init_failed": "[ModLoadingScreen] Failed to initialize loading screen. Aborting!"
+}

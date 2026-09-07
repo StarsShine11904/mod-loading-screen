@@ -45,6 +45,7 @@ public final class MlsTransformers {
     public static final Map<String, Collection<Consumer<ClassNode>>> TRANSFORMERS;
 
     static {
+        // Map target classes to their respective bytecode transformation consumers
         final Map<String, Collection<Consumer<ClassNode>>> transformers = new HashMap<>(8);
         transformers.put(FABRIC_LOADER_IMPL, Collections.singleton(
             MlsTransformers::instrumentFabricLoaderImplInvokeEntrypoints
@@ -70,11 +71,12 @@ public final class MlsTransformers {
     }
 
     static byte[] instrumentClass(String name, byte[] bytes) {
+        // Handle debug dump initialization when enabled
         if (DUMP_TRANSFORMED_CLASSES && !notifiedClassDump) {
             synchronized (MlsTransformers.class) {
                 if (!notifiedClassDump) {
                     notifiedClassDump = true;
-                    System.out.println("[ModLoadingScreen] Transformed class dumping is active");
+                    System.out.println(ActualLoadingScreen.translate("modloadingscreen.log.dump_active"));
                     try {
                         final Path dumpDir = Paths.get(".mlsDebugDump");
                         if (Files.isDirectory(dumpDir)) {
@@ -93,7 +95,7 @@ public final class MlsTransformers {
                             });
                         }
                     } catch (Throwable t) {
-                        System.err.println("[ModLoadingScreen] [ERROR] Failed to clear debug dump dir");
+                        System.err.println(ActualLoadingScreen.translate("modloadingscreen.log.dump_clear_failed"));
                     }
                 }
             }
@@ -102,7 +104,8 @@ public final class MlsTransformers {
         try {
             final Collection<Consumer<ClassNode>> transformer = TRANSFORMERS.get(name);
             if (transformer != null) {
-                System.out.println("[ModLoadingScreen] Transforming " + name);
+                // Log class transformation using localized message
+                System.out.println(ActualLoadingScreen.translate("modloadingscreen.log.transforming", name));
                 final ClassReader reader = new ClassReader(bytes);
                 final ClassNode clazz = new ClassNode();
                 reader.accept(clazz, 0);
@@ -110,7 +113,8 @@ public final class MlsTransformers {
                     try {
                         part.accept(clazz);
                     } catch (Exception e) {
-                        System.err.println("[ModLoadingScreen] [ERROR] Transformer " + part + " for " + name + " failed");
+                        // Log individual transformer step failure
+                        System.err.println(ActualLoadingScreen.translate("modloadingscreen.log.transformer_failed", part, name));
                         e.printStackTrace();
                     }
                 }
@@ -123,14 +127,15 @@ public final class MlsTransformers {
                         Files.createDirectories(dumpedPath.getParent());
                         Files.write(dumpedPath, result);
                     } catch (Exception e) {
-                        System.err.println("[ModLoadingScreen] [ERROR] Failed to dump class " + name);
+                        System.err.println(ActualLoadingScreen.translate("modloadingscreen.log.dump_failed", name));
                         e.printStackTrace();
                     }
                 }
                 return result;
             }
         } catch (Throwable t) {
-            System.err.println("[ModLoadingScreen] [ERROR] Completely failed to transform " + name);
+            // Log catastrophic transformation failure
+            System.err.println(ActualLoadingScreen.translate("modloadingscreen.log.transform_failed", name));
             t.printStackTrace();
         }
         return null;
@@ -142,11 +147,13 @@ public final class MlsTransformers {
             .findFirst()
             .orElse(null);
         if (method == null) {
-            System.out.println("[ModLoadingScreen] New-style FabricLoaderImpl.invokeEntrypoints not found. Assuming old Fabric.");
+            // Log fallback when invokeEntrypoints method structure does not match newer FabricLoader versions
+            System.out.println(ActualLoadingScreen.translate("modloadingscreen.log.old_fabric_fallback"));
             return;
         }
         final ListIterator<AbstractInsnNode> it = method.instructions.iterator();
 
+        // Inject check before entrypoint invocation to verify if loading screen should close
         maybeCloseAfter(it, true);
 
         while (it.hasNext()) {
@@ -155,7 +162,8 @@ public final class MlsTransformers {
             if (insn.getOpcode() == Opcodes.ACONST_NULL) break;
         }
         it.previous();
-        mainEntrypointHooks(it, false,  true);
+        // Insert entrypoint lifecycle tracking hooks
+        mainEntrypointHooks(it, false, true);
 
         maybeCloseAfter(it, true);
     }
@@ -170,10 +178,8 @@ public final class MlsTransformers {
         maybeCloseAfter(it, false);
     }
 
-    /**
-     * Inserts code for calling maybeCloseAfter, and leaves {@code it} pointing to the {@code RETURN}.
-     */
     private static void maybeCloseAfter(ListIterator<AbstractInsnNode> it, boolean instanceMethod) {
+        // Locate return opcode to insert closing check right before method exits
         while (it.hasNext()) {
             final AbstractInsnNode insn = it.next();
             if (!(insn instanceof InsnNode)) continue;
@@ -201,10 +207,10 @@ public final class MlsTransformers {
 
     private static void mainEntrypointHooks(ListIterator<AbstractInsnNode> it, boolean onQuilt, boolean instanceMethod) {
         final int varOffset = instanceMethod ? 1 : 0;
-        //noinspection PointlessArithmeticExpression
         final int keyIndex = 0 + varOffset;
         final int typeIndex = 1 + varOffset;
 
+        // Hook beforeEntrypointType at the start of entrypoint type processing
         it.add(new VarInsnNode(Opcodes.ALOAD, keyIndex));
         it.add(new VarInsnNode(Opcodes.ALOAD, typeIndex));
         it.add(new MethodInsnNode(
@@ -213,6 +219,7 @@ public final class MlsTransformers {
             "(Ljava/lang/String;Ljava/lang/Class;)V"
         ));
 
+        // Locate storage opcode of entrypoint container variable to hook single entrypoint executions
         final int container = (onQuilt ? 7 : 6) + varOffset;
         while (it.hasNext()) {
             final AbstractInsnNode insn = it.next();
@@ -267,6 +274,7 @@ public final class MlsTransformers {
             false
         ));
 
+        // Locate loop boundary to place afterEntrypointType callback
         while (it.hasNext()) {
             final AbstractInsnNode insn = it.next();
             if (!(insn instanceof InsnNode)) continue;
@@ -291,38 +299,27 @@ public final class MlsTransformers {
 
         final String BuiltinMod = onQuilt ? QUILT_BUILTIN_MOD : FABRIC_BUILTIN_MOD;
 
+        // Intercept builtin mod discovery to extract title metadata
         while (it.hasNext()) {
             final AbstractInsnNode insn = it.next();
             if (!(insn instanceof TypeInsnNode)) continue;
             if (insn.getOpcode() == Opcodes.CHECKCAST && ((TypeInsnNode)insn).desc.equals(BuiltinMod)) break;
         }
 
-        // BuiltinMod
         it.add(new InsnNode(Opcodes.DUP));
-        // BuiltinMod BuiltinMod
         it.add(new FieldInsnNode(Opcodes.GETFIELD, BuiltinMod, "metadata", "L" + MOD_METADATA + ";"));
-        // BuiltinMod ModMetadata
         it.add(new InsnNode(Opcodes.DUP));
-        // BuiltinMod ModMetadata ModMetadata
         it.add(new MethodInsnNode(Opcodes.INVOKEINTERFACE, MOD_METADATA, "getId", "()Ljava/lang/String;"));
-        // BuiltinMod ModMetadata String
         it.add(new InsnNode(Opcodes.SWAP));
-        // BuiltinMod String ModMetadata
         it.add(new InsnNode(Opcodes.DUP));
-        // BuiltinMod String ModMetadata ModMetadata
         it.add(new MethodInsnNode(Opcodes.INVOKEINTERFACE, MOD_METADATA, "getName", "()Ljava/lang/String;"));
-        // BuiltinMod String ModMetadata String
         it.add(new InsnNode(Opcodes.SWAP));
-        // BuiltinMod String String ModMetadata
         it.add(new MethodInsnNode(Opcodes.INVOKEINTERFACE, MOD_METADATA, "getVersion", "()L" + FABRIC_VERSION + ";"));
-        // BuiltinMod String String Version
         it.add(new MethodInsnNode(Opcodes.INVOKEINTERFACE, FABRIC_VERSION, "getFriendlyString", "()Ljava/lang/String;"));
-        // BuiltinMod String String String
         it.add(new MethodInsnNode(
             Opcodes.INVOKESTATIC, ACTUAL_LOADING_SCREEN, "setTitleFromMetadata",
             "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V"
         ));
-        // BuiltinMod
     }
 
     private static void instrumentStandardQuiltPluginAddBuiltinMods(ClassNode clazz) {
@@ -332,37 +329,26 @@ public final class MlsTransformers {
             .orElseThrow(IllegalStateException::new);
         final ListIterator<AbstractInsnNode> it = method.instructions.iterator();
 
+        // Intercept Quilt builtin mod registration to extract title metadata
         while (it.hasNext()) {
             final AbstractInsnNode insn = it.next();
             if (!(insn instanceof TypeInsnNode)) continue;
             if (insn.getOpcode() == Opcodes.CHECKCAST && ((TypeInsnNode)insn).desc.equals(QUILT_BUILTIN_MOD)) break;
         }
 
-        // BuiltinMod
         it.add(new InsnNode(Opcodes.DUP));
-        // BuiltinMod BuiltinMod
         it.add(new FieldInsnNode(Opcodes.GETFIELD, QUILT_BUILTIN_MOD, "metadata", "L" + INTERNAL_MOD_METADATA + ";"));
-        // BuiltinMod InternalModMetadata
         it.add(new InsnNode(Opcodes.DUP));
-        // BuiltinMod InternalModMetadata InternalModMetadata
         it.add(new MethodInsnNode(Opcodes.INVOKEINTERFACE, INTERNAL_MOD_METADATA, "id", "()Ljava/lang/String;"));
-        // BuiltinMod InternalModMetadata String
         it.add(new InsnNode(Opcodes.SWAP));
-        // BuiltinMod String InternalModMetadata
         it.add(new InsnNode(Opcodes.DUP));
-        // BuiltinMod String InternalModMetadata InternalModMetadata
         it.add(new MethodInsnNode(Opcodes.INVOKEINTERFACE, INTERNAL_MOD_METADATA, "name", "()Ljava/lang/String;"));
-        // BuiltinMod String InternalModMetadata String
         it.add(new InsnNode(Opcodes.SWAP));
-        // BuiltinMod String String InternalModMetadata
         it.add(new MethodInsnNode(Opcodes.INVOKEINTERFACE, INTERNAL_MOD_METADATA, "version", "()L" + QUILT_VERSION + ";"));
-        // BuiltinMod String String Version
         it.add(new MethodInsnNode(Opcodes.INVOKEINTERFACE, QUILT_VERSION, "raw", "()Ljava/lang/String;"));
-        // BuiltinMod String String String
         it.add(new MethodInsnNode(
             Opcodes.INVOKESTATIC, ACTUAL_LOADING_SCREEN, "setTitleFromMetadata",
             "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V"
         ));
-        // BuiltinMod
     }
 }

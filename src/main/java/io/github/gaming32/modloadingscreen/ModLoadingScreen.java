@@ -27,19 +27,23 @@ public class ModLoadingScreen implements LanguageAdapter {
     @SuppressWarnings("unchecked")
     public <T> T create(ModContainer mod, String value, Class<T> type) throws LanguageAdapterException {
         if (type != PreLaunchEntrypoint.class) {
-            throw new LanguageAdapterException("Fake entrypoint only supported on PreLaunchEntrypoint");
+            // Throw localized exception if an unsupported entrypoint type is requested
+            throw new LanguageAdapterException(ActualLoadingScreen.translate("modloadingscreen.error.fake_entrypoint_unsupported"));
         }
         return (T)(PreLaunchEntrypoint)() -> {};
     }
 
     public static void init() throws Throwable {
-        System.out.println("[ModLoadingScreen] I just want to say... I'm loading *really* early.");
+        // Log localized banner for early mod loading phase
+        System.out.println(ActualLoadingScreen.translate("modloadingscreen.log.mod_loading_early"));
         if (System.setProperty("mod-loading-screen.loaded", "true") != null) {
-            System.err.println("[ModLoadingScreen] [WARN] Mod Loading Screen installed as both a mod and an agent.");
-            System.err.println("[ModLoadingScreen] [WARN] Please avoid doing this. To avoid issues, the mod has disabled itself.");
+            // Warn and disable if both agent and mod versions are installed concurrently
+            System.err.println(ActualLoadingScreen.translate("modloadingscreen.log.dual_install_warn1"));
+            System.err.println(ActualLoadingScreen.translate("modloadingscreen.log.dual_install_warn2"));
             return;
         }
 
+        // Add mod and FlatLaf jar roots to the system class loader search path
         ClassLoaders.addToSystemClassPath(
             FabricLoader.getInstance()
                 .getModContainer("mod-loading-screen")
@@ -55,6 +59,7 @@ public class ModLoadingScreen implements LanguageAdapter {
                 .toUri().toURL()
         );
 
+        // Load ActualLoadingScreen class definition into the system class loader
         final byte[] alsData = Files.readAllBytes(
             FabricLoader.getInstance()
                 .getModContainer("mod-loading-screen")
@@ -63,11 +68,13 @@ public class ModLoadingScreen implements LanguageAdapter {
                 .orElseThrow(AssertionError::new)
         );
 
+        // Invoke startLoadingScreen with fabricReady set to true
         Methods.invoke(null, Methods.getDeclaredMethod(
             ClassLoaders.defineClass(ClassLoader.getSystemClassLoader(), ACTUAL_LOADING_SCREEN.replace('/', '.'), alsData),
             "startLoadingScreen", boolean.class
         ), true);
 
+        // Register transformer and retransform already-loaded classes
         final Instrumentation instrumentation = Agents.getInstrumentation();
         instrumentation.addTransformer(
             (loader, className, classBeingRedefined, protectionDomain, classfileBuffer) ->
@@ -87,7 +94,8 @@ public class ModLoadingScreen implements LanguageAdapter {
         try {
             init();
         } catch (Throwable t) {
-            System.err.println("[ModLoadingScreen] Failed to initialize loading screen. Aborting!");
+            // Log localized error message when initialization fails
+            System.err.println(ActualLoadingScreen.translate("modloadingscreen.log.init_failed"));
             throw new Error(t);
         }
     }

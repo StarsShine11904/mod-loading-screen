@@ -1,0 +1,32 @@
+{
+  "modmenu.nameTranslation.mod-loading-screen": "模組載入畫面",
+  "modmenu.descriptionTranslation.mod-loading-screen": "帶有模組載入進度的高級載入畫面",
+
+  "modloadingscreen.title.loading_quilt": "正在載入 Quilt Loader",
+  "modloadingscreen.title.loading_fabric": "正在載入 Fabric Loader",
+  "modloadingscreen.title.loading_mod": "正在載入 %s %s",
+
+  "modloadingscreen.memory.usage": "%d MB / %d MB",
+
+  "modloadingscreen.entrypoint.status": "正在載入 '%s' (%s) \u2014 %d/%d",
+  "modloadingscreen.entrypoint.status_mod": "正在載入 '%s' (%s) \u2014 %d/%d \u2014 %s",
+
+  "modloadingscreen.error.ipc_client": "模組載入畫面 的 IPC 客戶端發生錯誤\n%s",
+  "modloadingscreen.error.ipc_client_title": "模組載入畫面 IPC 客戶端",
+  "modloadingscreen.error.fake_entrypoint_unsupported": "偽進入點僅支援 PreLaunchEntrypoint",
+
+  "modloadingscreen.log.early_loading": "[模組載入畫面] 我只想說... 我的載入時機真的 *非常* **極度** 早期。",
+  "modloadingscreen.log.flatlaf_not_found": "[模組載入畫面] [錯誤] 找不到 flatlaf.jar！正在中止。",
+  "modloadingscreen.log.extracted_flatlaf": "[模組載入畫面] 已解壓縮 flatlaf.jar",
+  "modloadingscreen.log.dump_active": "[模組載入畫面] 已啟用轉換類別轉儲功能",
+  "modloadingscreen.log.dump_clear_failed": "[模組載入畫面] [錯誤] 清空除錯轉儲目錄失敗",
+  "modloadingscreen.log.transforming": "[模組載入畫面] 正在轉換 %s",
+  "modloadingscreen.log.transformer_failed": "[模組載入畫面] [錯誤] %2$s 的轉換器 %1$s 執行失敗",
+  "modloadingscreen.log.dump_failed": "[模組載入畫面] [錯誤] 轉儲類別 %s 失敗",
+  "modloadingscreen.log.transform_failed": "[模組載入畫面] [錯誤] 完全無法轉換 %s",
+  "modloadingscreen.log.old_fabric_fallback": "[模組載入畫面] 未找到新版 FabricLoaderImpl.invokeEntrypoints，將視為舊版 Fabric。",
+  "modloadingscreen.log.mod_loading_early": "[模組載入畫面] 我只想說... 我的載入時機真的 *非常* 早期。",
+  "modloadingscreen.log.dual_install_warn1": "[模組載入畫面] [警告] 模組載入畫面 同時以模組和 Agent 方式安裝。",
+  "modloadingscreen.log.dual_install_warn2": "[模組載入畫面] [警告] 請避免這樣做。為避免問題，模組已自動停用。",
+  "modloadingscreen.log.init_failed": "[模組載入畫面] 初始化載入畫面失敗。正在中止！"
+}

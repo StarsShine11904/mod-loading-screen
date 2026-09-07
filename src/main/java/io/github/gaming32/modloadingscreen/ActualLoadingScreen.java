@@ -13,27 +13,35 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GraphicsEnvironment;
+import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static io.github.gaming32.modloadingscreen.MlsTransformers.ACTUAL_LOADING_SCREEN;
 
@@ -64,7 +72,67 @@ public class ActualLoadingScreen {
 
     private static boolean enableMemoryDisplay = true;
 
+    // Cache holding loaded translation key-value mappings
+    private static final Map<String, String> TRANSLATIONS = new HashMap<>();
+
+    /**
+     * Loads translations for the current environment.
+     * Always loads default English (en_us) first, then overlays the system locale if different.
+     */
+    public static void loadTranslations() {
+        TRANSLATIONS.clear();
+        loadLangFile("en_us");
+        final String locale = Locale.getDefault().toString().toLowerCase(Locale.ROOT);
+        if (!locale.equals("en_us")) {
+            loadLangFile(locale);
+        }
+    }
+
+    /**
+     * Parses a flat key-value JSON file using regex to avoid external library dependencies
+     * during early bootstrapping.
+     */
+    private static void loadLangFile(String langCode) {
+        final InputStream is = ClassLoader.getSystemResourceAsStream("assets/mod-loading-screen/lang/" + langCode + ".json");
+        if (is == null) return;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+            final Pattern pattern = Pattern.compile("^\\s*\"([^\"]+)\"\\s*:\\s*\"(.*)\",?\\s*$");
+            String line;
+            while ((line = reader.readLine()) != null) {
+                final Matcher matcher = pattern.matcher(line);
+                if (matcher.matches()) {
+                    String val = matcher.group(2).replace("\\\"", "\"").replace("\\\\", "\\").replace("\\n", "\n");
+                    TRANSLATIONS.put(matcher.group(1), val);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    /**
+     * Translates a given translation key with optional formatting arguments.
+     * Falls back to MessageFormat or the raw translation key if String.format fails.
+     */
+    public static String translate(String key, Object... args) {
+        String pattern = TRANSLATIONS.getOrDefault(key, key);
+        if (args == null || args.length == 0) {
+            return pattern;
+        }
+        try {
+            return String.format(pattern, args);
+        } catch (Exception e) {
+            try {
+                return MessageFormat.format(pattern, args);
+            } catch (Exception ex) {
+                return pattern;
+            }
+        }
+    }
+
     public static void startLoadingScreen(boolean fabricReady) {
+        // Ensure localization mappings are loaded before initializing the UI
+        loadTranslations();
+
         final Path gameDir = fabricReady ? FabricLoader.getInstance().getGameDir() : Paths.get(".").toAbsolutePath();
         final Path runDir = gameDir.resolve(".cache/mod-loading-screen");
 
@@ -176,7 +244,8 @@ public class ActualLoadingScreen {
         if (fabricReady) {
             setFabricTitle();
         } else {
-            dialog.setTitle(runningOnQuilt ? "Loading Quilt Loader" : "Loading Fabric Loader");
+            // Apply localized loader window title before mod discovery finishes
+            dialog.setTitle(translate(runningOnQuilt ? "modloadingscreen.title.loading_quilt" : "modloadingscreen.title.loading_fabric"));
         }
         dialog.setResizable(false);
 
@@ -279,7 +348,8 @@ public class ActualLoadingScreen {
     public static void setTitleFromMetadata(String id, String name, String version) {
         if (titleSet || IGNORED_BUILTIN.contains(id)) return;
         titleSet = true;
-        setTitle("Loading " + name + ' ' + version);
+        // Use localized title with mod name and version placeholders
+        setTitle(translate("modloadingscreen.title.loading_mod", name, version));
     }
 
     private static void setFabricTitle() {
@@ -488,17 +558,19 @@ public class ActualLoadingScreen {
 
         memoryBar.setMaximum(totalMb);
         memoryBar.setValue(usageMb);
-        memoryBar.setString(usageMb + " MB / " + totalMb + " MB");
+        // Format memory status using localized pattern
+        memoryBar.setString(translate("modloadingscreen.memory.usage", usageMb, totalMb));
     }
 
     private static void setLabel(JProgressBar progressBar, String typeName, String typeType, @Nullable String modName) {
-        final StringBuilder message = new StringBuilder("Loading '").append(typeName)
-            .append("' (").append(typeType).append(") \u2014 ")
-            .append(progressBar.getValue()).append('/').append(progressBar.getMaximum());
+        final int current = progressBar.getValue();
+        final int max = progressBar.getMaximum();
+        // Update progress bar string with localized status pattern
         if (modName != null) {
-            message.append(" \u2014 ").append(modName);
+            progressBar.setString(translate("modloadingscreen.entrypoint.status_mod", typeName, typeType, current, max, modName));
+        } else {
+            progressBar.setString(translate("modloadingscreen.entrypoint.status", typeName, typeType, current, max));
         }
-        progressBar.setString(message.toString());
     }
 
     private static void println(String message) {
@@ -591,9 +663,10 @@ public class ActualLoadingScreen {
             println("IPC client exiting cleanly");
         } catch (Exception e) {
             println("Error in IPC client", e);
+            // Display localized error dialog in case of an IPC client failure
             JOptionPane.showMessageDialog(
-                dialog, "An error occurred in Mod Loading Screen's IPC client\n" + e,
-                "Mod Loading Screen IPC Client", JOptionPane.ERROR_MESSAGE
+                dialog, translate("modloadingscreen.error.ipc_client", e),
+                translate("modloadingscreen.error.ipc_client_title"), JOptionPane.ERROR_MESSAGE
             );
         }
         close();
