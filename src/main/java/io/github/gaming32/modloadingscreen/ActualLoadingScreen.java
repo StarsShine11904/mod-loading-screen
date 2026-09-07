@@ -64,6 +64,17 @@ public class ActualLoadingScreen {
 
     private static boolean enableMemoryDisplay = true;
 
+    private static String getGameVersion() {
+        try {
+            return FabricLoader.getInstance()
+                .getModContainer("minecraft")
+                .map(c -> c.getMetadata().getVersion().getFriendlyString())
+                .orElse(null);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
     public static void startLoadingScreen(boolean fabricReady) {
         final Path gameDir = fabricReady ? FabricLoader.getInstance().getGameDir() : Paths.get(".").toAbsolutePath();
         final Path runDir = gameDir.resolve(".cache/mod-loading-screen");
@@ -176,7 +187,9 @@ public class ActualLoadingScreen {
         if (fabricReady) {
             setFabricTitle();
         } else {
-            dialog.setTitle(runningOnQuilt ? "Loading Quilt Loader" : "Loading Fabric Loader");
+            final String loaderName = runningOnQuilt ? "Quilt Loader" : "Fabric Loader";
+            final String gameVersion = getGameVersion();
+            dialog.setTitle(gameVersion != null ? "Loading " + loaderName + ' ' + gameVersion : "Loading " + loaderName);
         }
         dialog.setResizable(false);
 
@@ -283,11 +296,17 @@ public class ActualLoadingScreen {
     }
 
     private static void setFabricTitle() {
+        final String gameVersion = getGameVersion();
+        final String loaderName = runningOnQuilt ? "Quilt" : "Fabric";
         for (final ModContainer container : FabricLoader.getInstance().getAllMods()) {
             final ModMetadata m = container.getMetadata();
             if (!m.getType().equals("builtin")) continue;
             setTitleFromMetadata(m.getId(), m.getName(), m.getVersion().getFriendlyString());
             if (titleSet) break;
+        }
+        if (!titleSet && gameVersion != null) {
+            titleSet = true;
+            setTitle("Loading " + loaderName + ' ' + gameVersion);
         }
     }
 
